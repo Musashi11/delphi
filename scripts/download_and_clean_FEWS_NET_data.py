@@ -33,8 +33,21 @@ def download_FEWS_NET_IPC_data():
         zf.extractall(data_dir)
 
 
-def process_FEWS_NET_IPC_data(shpfile: str, title: str):
+def process_FEWS_NET_data(region: str, country: str, year: int, month: int):
     # read the shapefile
+    month_str = "0" + str(month) if len(str(month)) < 2 else str(month)
+    region_str = "".join([x[0] for x in region.split()])
+    region_year_str = (
+        f"{region_str}{year}" if year == 2017 else f"{region_str}_{year}"
+    )
+    shpfile = f"data/ALL_HFIC/{region}/{region_year_str}{month_str}_CS"
+    title = "\n".join(
+        (
+            f"{region} Food Security Outcomes",
+            f"{calendar.month_name[month]} {year}",
+        )
+    )
+
     colors = {
         0: "white",
         1: "#c3e2c3",
@@ -54,7 +67,7 @@ def process_FEWS_NET_IPC_data(shpfile: str, title: str):
 
     def fill_and_plot(points, sr):
         xs, ys = lzip(*points)
-        ax.plot(xs, ys, linewidth=0.5, color="grey")
+        ax.plot(xs, ys, linewidth=0.5, color="grey", linestyle="dotted")
         ax.fill(xs, ys, color=colors[int(sr.record[0])])
 
     for i, sr in tqdm(
@@ -69,6 +82,17 @@ def process_FEWS_NET_IPC_data(shpfile: str, title: str):
                 else:
                     i1 = len(sr.shape.points)
                 fill_and_plot(sr.shape.points[part : i1 + 1], sr),
+
+    sf = shapefile.Reader("data/FEWSNET_World_Admin/FEWSNET_Admin2")
+    for i, sr in tqdm(
+        enumerate(sf.iterShapeRecords()), desc=str(len(sf.shapes()))
+    ):
+        if sr.record[3] == "South Sudan":
+            xs, ys = lzip(*sr.shape.points)
+            ax.plot(
+                xs, ys, linewidth=0.5, color="darkblue", linestyle="dotted"
+            )
+
     plt.savefig("shape.pdf")
 
 
@@ -78,19 +102,5 @@ if __name__ == "__main__":
     region = "East Africa"
     year = 2018
     month = 2
-    process_month = (
-        lambda month: "0" + str(month) if len(str(month)) < 2 else str(month)
-    )
-    month_str = process_month(month)
-    region_str = "".join([x[0] for x in region.split()])
-    region_year_str = (
-        f"{region_str}{year}" if year == 2017 else f"{region_str}_{year}"
-    )
-    shpfile = f"data/ALL_HFIC/{region}/{region_year_str}{month_str}_CS"
-    title = "\n".join(
-        (
-            f"{region} Food Security Outcomes",
-            f"{calendar.month_name[month]} {year}",
-        )
-    )
-    process_FEWS_NET_IPC_data(shpfile, title)
+    country = "South Sudan"
+    process_FEWS_NET_data(region, country, year, month)
